@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>GO PARCE - Registro</title>
+
+  <style>
+    body { font-family: Arial; margin: 20px; }
+
+    .campo { margin-bottom: 10px; }
+
+    label {
+      display: inline-block;
+      width: 200px;
+      font-weight: bold;
+    }
+
+    input, select {
+      padding: 6px;
+      width: 220px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .error {
+      color: red;
+      font-size: 12px;
+      margin-left: 200px;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 350px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<h1>Registro</h1>
+<h3>Paso 1: Información</h3>
+
+<div id="datos">
+
+<div class="campo">
+  <label>Nombre:</label>
+  <input id="nombre" oninput="validarPaso1()">
+</div>
+
+<div class="campo">
+  <label>Apellido:</label>
+  <input id="apellido" oninput="validarPaso1()">
+</div>
+
+<div class="campo">
+  <label>Documento:</label>
+  <input id="cedula" oninput="validarPaso1()">
+</div>
+
+<div class="campo">
+  <label>Tipo usuario:</label>
+  <select id="tipo" onchange="cambiarEntidad(); validarPaso1()">
+    <option value="">Selecciona</option>
+    <option value="negocio">Comercial</option>
+    <option value="organizacion">Organización</option>
+  </select>
+</div>
+
+<div class="campo">
+  <label id="labelEntidad">Entidad:</label>
+  <input id="entidad" oninput="validarPaso1()">
+</div>
+
+<div class="campo">
+  <label>Celular:</label>
+  <input id="celular" oninput="formatearCelular(); validarPaso1()">
+  <div id="errorCelular" class="error"></div>
+</div>
+
+<div class="campo">
+  <label>Correo:</label>
+  <input id="correo" oninput="validarPaso1()">
+  <div id="errorCorreo" class="error"></div>
+</div>
+
+</div>
+
+<button id="btnPrincipal" onclick="continuar()" disabled>Continuar</button>
+
+<p id="mensaje" style="color:red;"></p>
+
+<hr>
+
+<button onclick="volver()">Volver</button>
+
+<!-- MODAL -->
+
+<div id="modalPassword" class="modal">
+  <div class="modal-content">
+
+<h3>Crear contraseña</h3>
+
+<div class="campo">
+  <label>Contraseña:</label>
+  <input id="passwordModal" type="password" oninput="validarModal()">
+</div>
+
+<div class="campo">
+  <label>Confirmar:</label>
+  <input id="confirmarModal" type="password" oninput="validarModal()">
+  <div id="errorModal" class="error"></div>
+</div>
+
+<button id="btnModal" onclick="registrarDesdeModal()" disabled>Registrarse</button> <button onclick="cerrarModal()">Cancelar</button>
+
+  </div>
+</div>
+
+<script>
+
+const API = "http://localhost:3000";
+
+// VARIABLES
+const nombre = document.getElementById("nombre");
+const apellido = document.getElementById("apellido");
+const cedula = document.getElementById("cedula");
+const tipo = document.getElementById("tipo");
+const entidad = document.getElementById("entidad");
+const celular = document.getElementById("celular");
+const correo = document.getElementById("correo");
+
+const btnPrincipal = document.getElementById("btnPrincipal");
+const mensaje = document.getElementById("mensaje");
+const modalPassword = document.getElementById("modalPassword");
+
+const errorCelular = document.getElementById("errorCelular");
+const errorCorreo = document.getElementById("errorCorreo");
+const errorModal = document.getElementById("errorModal");
+
+const btnModal = document.getElementById("btnModal");
+const passwordModal = document.getElementById("passwordModal");
+const confirmarModal = document.getElementById("confirmarModal");
+
+// ================= VOLVER =================
+function volver() {
+  window.location.href = "index.html";
+}
+
+// ================= ENTIDAD =================
+function cambiarEntidad() {
+  document.getElementById("labelEntidad").innerText =
+    tipo.value === "negocio"
+      ? "Nombre del comercio:"
+      : "Nombre de la organización:";
+}
+
+// ================= CELULAR =================
+function formatearCelular() {
+  celular.value = celular.value.replace(/\D/g,'').slice(0,10);
+}
+
+// ================= VALIDACIÓN =================
+function validarPaso1() {
+
+  let valido = true;
+
+  if (!/^[0-9]{10}$/.test(celular.value)) {
+    errorCelular.innerText = "Debe tener 10 dígitos";
+    valido = false;
+  } else errorCelular.innerText = "";
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.value)) {
+    errorCorreo.innerText = "Correo inválido";
+    valido = false;
+  } else errorCorreo.innerText = "";
+
+  if (!(tipo.value &&
+        nombre.value.trim() &&
+        apellido.value.trim() &&
+        cedula.value.trim() &&
+        entidad.value.trim() &&
+        celular.value.trim() &&
+        correo.value.trim())) {
+    valido = false;
+  }
+
+  btnPrincipal.disabled = !valido;
+}
+
+// ================= VALIDAR MODAL =================
+function validarModal() {
+
+  if (passwordModal.value.length < 6) {
+    errorModal.innerText = "Mínimo 6 caracteres";
+    btnModal.disabled = true;
+    return;
+  }
+
+  if (passwordModal.value !== confirmarModal.value) {
+    errorModal.innerText = "No coinciden";
+    btnModal.disabled = true;
+    return;
+  }
+
+  errorModal.innerText = "";
+  btnModal.disabled = false;
+}
+
+// ================= CONTINUAR =================
+function continuar() {
+  mensaje.innerText = "";
+  modalPassword.style.display = "flex";
+}
+
+// ================= REGISTRAR =================
+async function registrarDesdeModal() {
+
+  try {
+
+    const res = await fetch(API + "/registro", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        tipo: tipo.value,
+        nombre: nombre.value,
+        apellido: apellido.value,
+        cedula: cedula.value,
+        entidad: entidad.value,
+        celular: celular.value,
+        correo: correo.value,
+        password: passwordModal.value
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      mensaje.innerText = data.error || "Error guardando usuario";
+      return; // 🔥 NO cerramos el modal
+    }
+
+    localStorage.setItem("usuario", JSON.stringify(data));
+    window.location.href = "panel.html";
+
+  } catch {
+    mensaje.innerText = "Error de conexión";
+  }
+}
+
+// ================= MODAL =================
+function cerrarModal() {
+  modalPassword.style.display = "none";
+}
+
+window.onload = validarPaso1;
+
+</script>
+
+</body>
+</html>

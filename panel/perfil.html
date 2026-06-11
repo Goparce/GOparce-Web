@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>GO PARCE - Perfil</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+
+    .campo {
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: inline-block;
+      width: 200px;
+      font-weight: bold;
+    }
+
+    input {
+      padding: 6px;
+      width: 220px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px;
+      cursor: pointer;
+    }
+  </style>
+
+</head>
+<body>
+
+<h1>Mi Perfil</h1>
+
+<button onclick="volver()">← Volver</button>
+
+<hr>
+
+<div class="campo">
+  <label>Nombre representante:</label>
+  <span id="nombre"></span>
+</div>
+
+<div class="campo">
+  <label>Cédula:</label>
+  <span id="cedula"></span>
+</div>
+
+<div class="campo">
+  <label>Nombre negocio/org:</label>
+  <input id="entidad" disabled>
+</div>
+
+<div class="campo">
+  <label>Celular:</label>
+  <input id="celular" disabled>
+</div>
+
+<div class="campo">
+  <label>Correo:</label>
+  <input id="correo" disabled>
+</div>
+
+<div class="campo">
+  <label>Facebook:</label>
+  <input id="facebook" placeholder="facebook.com/tuusuario" disabled>
+</div>
+
+<div class="campo">
+  <label>Instagram:</label>
+  <input id="instagram" placeholder="@usuario" disabled>
+</div>
+
+<div class="campo">
+  <label>TikTok:</label>
+  <input id="tiktok" placeholder="@usuario" disabled>
+</div>
+
+<div class="campo">
+  <label>Cuenta creada:</label>
+  <span id="fecha"></span>
+</div>
+
+<div class="campo">
+  <label>Cambios de celular restantes:</label>
+  <span id="cambios"></span>
+</div>
+
+<br>
+
+<button id="btnEditar" onclick="toggleEditar()">Editar datos</button>
+
+<p id="mensaje" style="color:green;"></p>
+
+<script>
+
+const API = "http://localhost:3000";
+
+// ================= USUARIO =================
+let rawUser = JSON.parse(localStorage.getItem("usuario"));
+let user = Array.isArray(rawUser) ? rawUser[0] : rawUser;
+
+const userId = user?._id;
+
+if (!userId) {
+  alert("Error de sesión");
+  window.location.href = "index.html";
+}
+
+// ================= MOSTRAR =================
+document.getElementById("nombre").innerText = user.nombre + " " + user.apellido;
+document.getElementById("cedula").innerText = user.cedula;
+document.getElementById("entidad").value = user.entidad || "";
+document.getElementById("celular").value = user.celular || "";
+document.getElementById("correo").value = user.correo || "";
+
+document.getElementById("facebook").value = user.facebook || "";
+document.getElementById("instagram").value = user.instagram || "";
+document.getElementById("tiktok").value = user.tiktok || "";
+
+// 🔥 FECHA DESDE MONGO
+document.getElementById("fecha").innerText =
+  new Date(user.fecha_creacion).toLocaleDateString();
+
+// 🔥 CAMBIOS CELULAR
+let restantes = 2 - (user.cambiosCelular || 0);
+document.getElementById("cambios").innerText = restantes;
+
+// ================= FUNCIONES =================
+
+function volver() {
+  window.location.href = "panel.html";
+}
+
+let editando = false;
+
+// 🔥 FORMATEAR REDES
+function formatearRed(tipo, valor) {
+
+  if (!valor) return "";
+
+  valor = valor.trim();
+
+  if (valor.startsWith("@")) {
+    valor = valor.substring(1);
+  }
+
+  if (valor.startsWith("http")) return valor;
+
+  if (tipo === "instagram") return "https://instagram.com/" + valor;
+  if (tipo === "facebook") return "https://facebook.com/" + valor;
+  if (tipo === "tiktok") return "https://tiktok.com/@" + valor;
+
+  return valor;
+}
+
+// ================= EDITAR =================
+async function toggleEditar() {
+
+  const btn = document.getElementById("btnEditar");
+  const mensaje = document.getElementById("mensaje");
+
+  if (!editando) {
+
+    document.getElementById("entidad").disabled = false;
+    document.getElementById("celular").disabled = false;
+    document.getElementById("correo").disabled = false;
+
+    document.getElementById("facebook").disabled = false;
+    document.getElementById("instagram").disabled = false;
+    document.getElementById("tiktok").disabled = false;
+
+    btn.innerText = "Guardar cambios";
+    mensaje.innerText = "";
+    editando = true;
+    return;
+  }
+
+  // 🔥 DATOS
+  const entidad = document.getElementById("entidad").value.trim();
+  const celular = document.getElementById("celular").value.trim();
+  const correo = document.getElementById("correo").value.trim();
+
+  let facebook = formatearRed("facebook", document.getElementById("facebook").value);
+  let instagram = formatearRed("instagram", document.getElementById("instagram").value);
+  let tiktok = formatearRed("tiktok", document.getElementById("tiktok").value);
+
+  // 🔥 VALIDACIONES
+  if (!entidad || !celular || !correo) {
+    mensaje.innerText = "Completa los campos";
+    return;
+  }
+
+  if (!/^[0-9]{10}$/.test(celular)) {
+    mensaje.innerText = "Celular inválido";
+    return;
+  }
+
+  if (!/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(correo)) {
+    mensaje.innerText = "Correo inválido";
+    return;
+  }
+
+  // 🔥 CONTROL CELULAR FRONT
+  if ((user.cambiosCelular || 0) >= 2 && celular !== user.celular) {
+    mensaje.innerText = "Ya no puedes cambiar el número";
+    return;
+  }
+
+  try {
+
+    const res = await fetch(API + "/usuarios/" + userId, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        entidad,
+        celular,
+        correo,
+        facebook,
+        instagram,
+        tiktok
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      mensaje.innerText = data.error;
+      return;
+    }
+
+    // 🔥 ACTUALIZAR LOCAL
+    localStorage.setItem("usuario", JSON.stringify(data));
+    user = data;
+
+    mensaje.innerText = "Guardado correctamente";
+
+    location.reload();
+
+  } catch (error) {
+    console.log(error);
+    mensaje.innerText = "Error de conexión";
+  }
+}
+
+</script>
+
+</body>
+</html>

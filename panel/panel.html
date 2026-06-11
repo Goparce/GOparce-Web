@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>GO PARCE - Panel</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      margin: 20px;
+    }
+
+    .menu button {
+      margin-right: 10px;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .activo { color: green; }
+    .finalizado { color: red; }
+    .proximo { color: orange; }
+
+    .acciones button {
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+
+    .destacado {
+      background: gold;
+      padding: 3px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 400px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<h1>Panel GO PARCE</h1>
+
+<p id="bienvenida"></p>
+
+<button onclick="logout()">Cerrar sesión</button>
+
+<hr>
+
+<div class="menu">
+  <button onclick="irPerfil()">Perfil</button>
+  <button onclick="irCrearEvento()">Crear Evento</button>
+  <button onclick="irMural()">Mural</button>
+  <button onclick="irCupones()">Cupones 🎟</button>
+</div>
+
+<hr>
+
+<h2>Mis Eventos</h2>
+
+<p id="totalEventos"></p>
+
+<div id="contenedorEventos"></div>
+
+<!-- MODAL -->
+
+<div id="modalDetalle" class="modal">
+  <div class="modal-content">
+    <h3 id="detalleTitulo"></h3>
+    <p id="detalleDescripcion"></p>
+    <p id="detalleFecha"></p>
+    <p id="detalleUbicacion"></p>
+    <p id="detalleEstado"></p>
+    <p id="detalleExtra"></p>
+    <button onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+
+const API = "http://localhost:3000";
+
+// ================= USUARIO =================
+
+let rawUser = JSON.parse(localStorage.getItem("usuario"));
+
+let user = Array.isArray(rawUser) ? rawUser[0] : rawUser;
+
+if (!user || !user._id) {
+  alert("Error de sesión");
+  window.location.href = "index.html";
+}
+
+bienvenida.innerText =
+  "Bienvenido " + user.nombre + " (" + user.tipo + ")";
+
+// ================= NAV =================
+
+function irPerfil(){ window.location.href="perfil.html"; }
+function irCrearEvento(){ window.location.href="crear-evento.html"; }
+function irMural(){ window.location.href="mural.html"; }
+function irCupones(){ window.location.href="cupones.html"; }
+
+function logout(){
+  localStorage.removeItem("usuario");
+  window.location.href="index.html";
+}
+
+// ================= EVENTOS =================
+
+async function cargarEventos(){
+
+  const contenedor = document.getElementById("contenedorEventos");
+
+  try{
+
+    const res = await fetch(API + "/eventos");
+    const data = await res.json();
+
+    let misEventos = data.filter(e => e.usuario_id == user._id);
+
+    // 🔥 ORDEN
+    misEventos.sort((a,b)=> new Date(a.fecha)-new Date(b.fecha));
+
+    totalEventos.innerText = "📊 Total eventos: " + misEventos.length;
+
+    contenedor.innerHTML = "";
+
+    misEventos.forEach(e => {
+
+      const hoy = new Date();
+      const fechaEvento = new Date(e.fecha);
+
+      const diasRestantes = Math.ceil((fechaEvento - hoy)/(1000*60*60*24));
+
+      let estado = "Activo";
+      let clase = "activo";
+
+      if (fechaEvento < hoy){
+        estado="Finalizado"; clase="finalizado";
+      } else if (diasRestantes <= 2){
+        estado="Próximo"; clase="proximo";
+      }
+
+      const interesados = e.interesados || 0;
+      const notificaciones = e.notificaciones || 0;
+
+      // 🔥 IMPACTO
+      let impacto = "Bajo";
+      if (interesados > 50) impacto="Alto";
+      else if (interesados > 20) impacto="Medio";
+
+      const card = document.createElement("div");
+      card.className="card";
+
+      card.innerHTML=`
+        <h3>${e.titulo} ${e.destacado ? '<span class="destacado">Destacado</span>' : ''}</h3>
+        <p>${e.descripcion || ""}</p>
+
+        <p>📅 ${e.fecha} ${e.hora}</p>
+        <p>⏳ ${diasRestantes > 0 ? diasRestantes+" días restantes" : "Hoy o finalizado"}</p>
+
+        <p>👥 Interesados: ${interesados}</p>
+        <p>📢 Notificaciones: ${notificaciones}</p>
+        <p>📊 Impacto: ${impacto}</p>
+
+        <p class="${clase}">Estado: ${estado}</p>
+
+        <div class="acciones">
+          <button onclick="verDetalle(${JSON.stringify(e).replace(/"/g,'&quot;')})">Ver más</button>
+          <button onclick="impulsarEvento('${e._id}')">Impulsar</button>
+          <button onclick="duplicarEvento(${JSON.stringify(e).replace(/"/g,'&quot;')})">Duplicar</button>
+        </div>
+      `;
+
+      contenedor.appendChild(card);
+    });
+
+  }catch(err){
+    contenedor.innerHTML="<p>Error cargando eventos</p>";
+  }
+}
+
+// ================= DETALLE =================
+
+function verDetalle(e){
+
+  detalleTitulo.innerText = e.titulo;
+  detalleDescripcion.innerText = e.descripcion;
+  detalleFecha.innerText = "📅 "+e.fecha+" "+e.hora;
+  detalleUbicacion.innerText = "📍 "+(e.direccion || "No disponible");
+  detalleEstado.innerText = "Estado: "+(e.estado || "Activo");
+
+  detalleExtra.innerText =
+    "👥 "+(e.interesados||0)+
+    " | 📢 "+(e.notificaciones||0)+
+    " | 🏷 "+(e.etiquetas?.join(", ") || "N/A");
+
+  modalDetalle.style.display="flex";
+}
+
+function cerrarModal(){
+  modalDetalle.style.display="none";
+}
+
+// ================= IMPULSAR =================
+
+async function impulsarEvento(id){
+
+  await fetch(API+"/impulsar/"+id,{method:"POST"});
+  alert("Impulsado 🚀");
+}
+
+// ================= DUPLICAR =================
+
+async function duplicarEvento(e){
+
+  delete e._id;
+
+  await fetch(API+"/eventos",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(e)
+  });
+
+  alert("Evento duplicado");
+  cargarEventos();
+}
+
+// ================= INIT =================
+
+cargarEventos();
+
+</script>
+
+</body>
+</html>

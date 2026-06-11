@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>GO PARCE - Cupones</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+    }
+
+    .panel {
+      width: 30%;
+      background: #f4f6f8;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .contenido {
+      width: 70%;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .activo { color: green; }
+    .vencido { color: red; }
+    .agotado { color: gray; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      margin-bottom: 10px;
+    }
+
+    input, select {
+      padding: 6px;
+      width: 95%;
+    }
+
+    button {
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .preview {
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 15px;
+      border: 1px solid #ddd;
+    }
+
+    img {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 5px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<!-- PANEL -->
+
+<div class="panel">
+
+<h2>Crear Cupón</h2>
+
+<div class="grid"><label>Nombre:</label><input id="nombre" oninput="preview()"></div>
+<div class="grid"><label>Descripción:</label><input id="descripcion" oninput="preview()"></div>
+
+<div class="grid">
+<label>Tipo promoción:</label>
+<select id="tipoPromo" onchange="toggleValor(); preview()">
+<option value="porcentaje">% descuento</option>
+<option value="valor">Valor fijo</option>
+<option value="2x1">2x1</option>
+</select>
+</div>
+
+<div class="grid" id="campoValor">
+<label>Valor:</label>
+<input id="valorPromo" oninput="preview()">
+</div>
+
+<div class="grid"><label>Fecha inicio:</label><input id="fechaInicio" type="date"></div>
+<div class="grid"><label>Fecha fin:</label><input id="fechaFin" type="date"></div>
+
+<div class="grid">
+<label>Aplica para:</label>
+<select id="aplica">
+<option value="general">General</option>
+<option value="evento">Evento</option>
+<option value="servicio">Servicio</option>
+</select>
+</div>
+
+<div class="grid">
+<label>Uso:</label>
+<select id="uso" onchange="toggleUso()">
+<option value="unico">Único</option>
+<option value="multiple">Múltiple</option>
+</select>
+</div>
+
+<div class="grid" id="campoUso" style="display:none;">
+<label>Máx usos:</label>
+<input id="maxUso" maxlength="1" placeholder="1-5">
+</div>
+
+<div class="grid">
+<label>Cantidad:</label>
+<select id="tipoCantidad" onchange="toggleCantidad()">
+<option value="ilimitado">Ilimitado</option>
+<option value="limitado">Limitado</option>
+</select>
+</div>
+
+<div class="grid" id="campoCantidad" style="display:none;">
+<label>Cantidad:</label>
+<input id="cantidad" maxlength="2">
+</div>
+
+<div class="grid">
+<label>Imagen:</label>
+<input type="file" onchange="previewImagen(event)">
+</div>
+
+<!-- PREVIEW -->
+
+<div class="preview" id="preview">
+<h3>Vista previa</h3>
+<p id="pNombre"></p>
+<p id="pDesc"></p>
+<p id="pValor"></p>
+<img id="pImg" style="display:none;">
+</div>
+
+<button onclick="crearCupon()">Crear Cupón</button>
+
+</div>
+
+<!-- LISTADO -->
+
+<div class="contenido">
+
+<h2>Cupones</h2>
+
+<div id="listaCupones"></div>
+
+</div>
+
+<script>
+
+const API = "http://localhost:3000";
+const user = JSON.parse(localStorage.getItem("usuario"));
+
+if (!user) window.location.href = "index.html";
+
+// ================= TOGGLES =================
+
+function toggleUso() {
+  campoUso.style.display = uso.value === "multiple" ? "grid" : "none";
+}
+
+function toggleCantidad() {
+  campoCantidad.style.display =
+    tipoCantidad.value === "limitado" ? "grid" : "none";
+}
+
+function toggleValor() {
+  campoValor.style.display =
+    tipoPromo.value === "2x1" ? "none" : "grid";
+}
+
+// ================= PREVIEW =================
+
+function preview() {
+
+  pNombre.innerText = nombre.value;
+  pDesc.innerText = descripcion.value;
+
+  let tipo = tipoPromo.value;
+  let valor = valorPromo.value;
+
+  if (tipo === "porcentaje") {
+    pValor.innerText = valor ? valor + "% OFF" : "";
+  } else if (tipo === "valor") {
+    pValor.innerText = valor ? "$" + valor : "";
+  } else {
+    pValor.innerText = "2x1";
+  }
+}
+
+function previewImagen(e) {
+  const file = e.target.files[0];
+  if (file) {
+    pImg.src = URL.createObjectURL(file);
+    pImg.style.display = "block";
+  }
+}
+
+// ================= CODIGO =================
+
+function generarCodigo() {
+  return "CP-" + Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+// ================= CREAR =================
+
+async function crearCupon() {
+
+  const codigo = generarCodigo();
+
+  if (!nombre.value || !fechaInicio.value || !fechaFin.value) {
+    alert("Completa campos obligatorios");
+    return;
+  }
+
+  if (tipoPromo.value !== "2x1" && !valorPromo.value) {
+    alert("Ingresa valor");
+    return;
+  }
+
+  if (uso.value === "multiple" && (maxUso.value < 1 || maxUso.value > 5)) {
+    alert("Máx uso 1-5");
+    return;
+  }
+
+  const data = {
+    nombre: nombre.value,
+    descripcion: descripcion.value,
+    tipoPromo: tipoPromo.value,
+    valorPromo: valorPromo.value,
+    codigo,
+    fechaInicio: fechaInicio.value,
+    fechaFin: fechaFin.value,
+    aplica: aplica.value,
+    uso: uso.value,
+    maxUso: uso.value === "multiple" ? maxUso.value : 1,
+    cantidad:
+      tipoCantidad.value === "limitado" ? cantidad.value : "ilimitado",
+    usuario_id: user._id,
+    adquiridos: 0,
+    fecha_publicacion: new Date(),
+    usos: []
+  };
+
+  await fetch(API + "/cupones", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(data)
+  });
+
+  alert("Cupón creado 🎟");
+  cargarCupones();
+}
+
+// ================= LISTAR =================
+
+async function cargarCupones() {
+
+  const res = await fetch(API + "/cupones");
+  const data = await res.json();
+
+  listaCupones.innerHTML = "";
+
+  data.filter(c => c.usuario_id == user._id)
+      .sort((a,b)=> new Date(a.fechaFin)-new Date(b.fechaFin))
+      .forEach(c => {
+
+        const hoy = new Date();
+        const fin = new Date(c.fechaFin);
+
+        let estado = "Activo";
+        let clase = "activo";
+
+        if (fin < hoy) {
+          estado = "Vencido";
+          clase = "vencido";
+        }
+
+        if (c.cantidad !== "ilimitado" && c.adquiridos >= c.cantidad) {
+          estado = "Agotado";
+          clase = "agotado";
+        }
+
+listaCupones.innerHTML += `
+  <div class="card">
+
+    <h3>${c.nombre}</h3>
+
+    <p><strong>Descripción:</strong> ${c.descripcion}</p>
+
+    <p><strong>Estado:</strong> <span class="${clase}">${estado}</span></p>
+
+    <p><strong>Tipo:</strong> ${
+      c.tipoPromo === "porcentaje" ? "Descuento %" :
+      c.tipoPromo === "valor" ? "Valor fijo" :
+      "2x1"
+    }</p>
+
+    <p><strong>Valor:</strong> ${
+      c.tipoPromo === "porcentaje" ? c.valorPromo + "%" :
+      c.tipoPromo === "valor" ? "$" + c.valorPromo :
+      "2x1"
+    }</p>
+
+    <p><strong>Aplica para:</strong> ${c.aplica}</p>
+
+    <p><strong>Fecha inicio:</strong> ${
+      new Date(c.fechaInicio).toLocaleDateString()
+    }</p>
+
+    <p><strong>Fecha fin:</strong> ${
+      new Date(c.fechaFin).toLocaleDateString()
+    }</p>
+
+    <p><strong>Uso:</strong> ${
+      c.uso === "multiple"
+        ? "Múltiple (" + c.maxUso + " veces)"
+        : "Único"
+    }</p>
+
+    <p><strong>Cantidad:</strong> ${
+      c.cantidad === "ilimitado"
+        ? "Ilimitado"
+        : c.cantidad
+    }</p>
+
+    <p><strong>Adquiridos:</strong> ${c.adquiridos}</p>
+
+    <p><strong>Código:</strong> ${c.codigo}</p>
+
+    <p><strong>Publicado:</strong> ${
+      new Date(c.fecha_publicacion).toLocaleDateString()
+    }</p>
+
+  </div>
+        `;
+      });
+}
+
+// ================= INIT =================
+cargarCupones();
+
+</script>
+
+</body>
+</html>

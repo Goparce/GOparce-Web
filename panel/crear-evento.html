@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Crear Evento</title>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwsJ88IFnvM2Vj_a_fEaunsJosmRRX6to"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      display: flex;
+      height: 100vh;
+    }
+
+    .formulario {
+      width: 35%;
+      padding: 20px;
+      background: #f5f5f5;
+      overflow-y: auto;
+    }
+
+    #mapa {
+      width: 65%;
+      height: 100%;
+    }
+
+    .form-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .form-group label {
+      width: 180px;
+      font-weight: bold;
+    }
+
+    input, select {
+      flex: 1;
+      padding: 6px;
+    }
+
+    .card {
+      background: white;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #ddd;
+      padding: 5px;
+      margin: 3px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .tag.selected {
+      background: #007bff;
+      color: white;
+    }
+
+    .card-cat {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .subcats { display:none; }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="formulario">
+
+<h2>Crear Evento</h2>
+
+<button onclick="volver()">← Volver</button>
+
+<hr>
+
+<div class="form-group">
+<label>Título:</label>
+<input id="titulo" placeholder="Ej: Festival gastronómico" oninput="previewEvento()">
+</div>
+
+<div class="form-group">
+<label>Descripción:</label>
+<input id="descripcion" placeholder="Describe tu evento" oninput="previewEvento()">
+</div>
+
+<div class="form-group">
+<label>Fecha inicio:</label>
+<input id="fecha" type="date" onchange="previewEvento()">
+</div>
+
+<div class="form-group">
+<label>Fecha fin:</label>
+<input id="fechaFin" type="date" onchange="previewEvento()">
+</div>
+
+<div class="form-group">
+<label>Hora:</label>
+<input id="hora" type="time">
+</div>
+
+<div class="form-group">
+<label>Tipo evento:</label>
+<select id="tipoEvento">
+<option value="publico">Público</option>
+<option value="privado">Privado</option>
+</select>
+</div>
+
+<h3>Categorías</h3>
+<div id="categorias"></div>
+
+<div class="form-group">
+<label>Costo:</label>
+<select id="tieneCosto" onchange="toggleCosto()">
+<option value="no">Gratis</option>
+<option value="si">Tiene costo</option>
+</select>
+</div>
+
+<div class="form-group" id="campoValor" style="display:none;">
+<label>Valor:</label>
+<input id="valor" placeholder="Ej: 10000">
+</div>
+
+<div class="form-group">
+<label>Reserva:</label>
+<select id="reserva" onchange="toggleReserva()">
+<option value="no">No</option>
+<option value="si">Sí</option>
+</select>
+</div>
+
+<div class="form-group" id="campoCupos" style="display:none;">
+<label>Cupos:</label>
+<input id="cupos" maxlength="2">
+</div>
+
+<div class="form-group">
+<label>Imagen:</label>
+<input type="file" id="imagen">
+</div>
+
+<p id="coords">📍 Selecciona ubicación</p>
+<p id="direccion"></p>
+
+<button onclick="crearEvento()">Publicar</button>
+
+<!-- PREVIEW -->
+
+<h3>Vista previa</h3>
+<div id="previewEvento"></div>
+
+</div>
+
+<div id="mapa"></div>
+
+<script>
+
+const API = "http://localhost:3000";
+const user = JSON.parse(localStorage.getItem("usuario"));
+
+let map = new google.maps.Map(document.getElementById("mapa"), {
+  center: { lat: 4.7110, lng: -74.0721 },
+  zoom: 13
+});
+
+let marker, lat, lng, direccionTexto = "";
+
+map.addListener("click", (e) => {
+
+  lat = e.latLng.lat();
+  lng = e.latLng.lng();
+
+  if (marker) marker.setMap(null);
+
+  marker = new google.maps.Marker({
+    position: { lat, lng },
+    map: map
+  });
+
+  document.getElementById("coords").innerText =
+    `📍 Lat: ${lat.toFixed(5)} | Lng: ${lng.toFixed(5)}`;
+
+  const geocoder = new google.maps.Geocoder();
+
+  geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+    if (status === "OK") {
+      direccionTexto = results[0].formatted_address;
+      document.getElementById("direccion").innerText = direccionTexto;
+    }
+  });
+
+});
+
+// ================= CATEGORÍAS =================
+let etiquetasSeleccionadas = [];
+
+async function cargarCategorias(){
+
+  const res = await fetch(API+"/categorias");
+  const data = await res.json();
+
+  data.forEach(cat=>{
+
+    const card = document.createElement("div");
+    card.className="card-cat";
+    card.innerHTML="<strong>"+cat.nombre+"</strong>";
+
+    const sub=document.createElement("div");
+    sub.className="subcats";
+
+    cat.subcategorias.forEach(s=>{
+
+      const tag=document.createElement("span");
+      tag.className="tag";
+      tag.innerText=s;
+
+      tag.onclick=()=>{
+
+        if(tag.classList.contains("selected")){
+          tag.classList.remove("selected");
+          etiquetasSeleccionadas=etiquetasSeleccionadas.filter(e=>e!==s);
+        }else{
+
+          if(etiquetasSeleccionadas.length>=5){
+            alert("Máximo 5 etiquetas");
+            return;
+          }
+
+          tag.classList.add("selected");
+          etiquetasSeleccionadas.push(s);
+        }
+
+        previewEvento();
+      };
+
+      sub.appendChild(tag);
+    });
+
+    card.onclick=()=>{
+      sub.style.display=sub.style.display==="block"?"none":"block";
+    };
+
+    card.appendChild(sub);
+    categorias.appendChild(card);
+
+  });
+}
+
+// ================= PREVIEW =================
+function previewEvento(){
+
+  let dias=0;
+
+  if(fechaFin.value && fecha.value){
+    dias=Math.ceil((new Date(fechaFin.value)-new Date(fecha.value))/(1000*60*60*24));
+  }
+
+  previewEvento.innerHTML=`
+    <div class="card">
+      <h3>${titulo.value}</h3>
+      <p>${descripcion.value}</p>
+      <p>📅 ${fecha.value}</p>
+      <p>🗓 ${dias>0?dias+" días":"Mismo día"}</p>
+      <p>🏷 ${etiquetasSeleccionadas.join(", ")}</p>
+      <p>${tieneCosto.value==="si"?"$"+valor.value:"Gratis"}</p>
+    </div>
+  `;
+}
+
+// ================= VALIDACIONES =================
+async function crearEvento(){
+
+  if(!titulo.value || !fecha.value || !hora.value || !lat){
+    alert("Completa campos obligatorios");
+    return;
+  }
+
+  if(fechaFin.value && fechaFin.value < fecha.value){
+    alert("Fecha fin inválida");
+    return;
+  }
+
+  if(reserva.value==="si" && !cupos.value){
+    alert("Define cupos");
+    return;
+  }
+
+  if(etiquetasSeleccionadas.length===0){
+    alert("Selecciona al menos 1 categoría");
+    return;
+  }
+
+  await fetch(API+"/eventos",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      titulo:titulo.value,
+      descripcion:descripcion.value,
+      fecha:fecha.value,
+      fechaFin:fechaFin.value,
+      hora:hora.value,
+      etiquetas:etiquetasSeleccionadas,
+      reserva:reserva.value,
+      cupos:cupos.value,
+      direccion:direccionTexto,
+      tipoEvento:tipoEvento.value,
+      lat,lng,
+      usuario_id:user._id
+    })
+  });
+
+  alert("Evento creado 🚀");
+  window.location.href="panel.html";
+}
+
+// ================= UI =================
+function toggleCosto(){
+  campoValor.style.display=tieneCosto.value==="si"?"flex":"none";
+}
+
+function toggleReserva(){
+  campoCupos.style.display=reserva.value==="si"?"flex":"none";
+}
+
+function volver(){
+  window.location.href="panel.html";
+}
+
+// INIT
+cargarCategorias();
+
+</script>
+
+</body>
+</html>

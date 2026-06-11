@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login</title>
+
+<style>
+body{
+  font-family: Arial;
+  padding:20px;
+}
+
+input,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+}
+
+.link{
+  margin-top:10px;
+  color:blue;
+  cursor:pointer;
+  display:block;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Iniciar Sesión</h2>
+
+<input id="correo" placeholder="Correo">
+<input id="password" type="password" placeholder="Clave">
+
+<button onclick="login()">Ingresar</button>
+
+<span class="link" onclick="irRecuperar()">¿Olvidaste tu contraseña?</span>
+
+<hr>
+
+<span class="link" onclick="irRegistro()">Registrarse</span>
+
+<p id="error" style="color:red;"></p>
+
+<script>
+
+const API="http://localhost:3000";
+
+async function login(){
+
+  const correo = document.getElementById("correo").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const error = document.getElementById("error");
+
+  error.innerText = "";
+
+  if(!correo || !password){
+    error.innerText = "Completa todos los campos";
+    return;
+  }
+
+  try{
+
+    const res = await fetch(API + "/login",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json"},
+      body:JSON.stringify({correo, password})
+    });
+
+    const data = await res.json();
+
+    if(!res.ok){
+      error.innerText = data.error || "Credenciales incorrectas";
+      return;
+    }
+
+    // GUARDAR USUARIO
+    localStorage.setItem("usuario", JSON.stringify(data));
+
+    // REDIRECCIÓN SEGÚN TIPO
+    if(data.tipo === "negocio" || data.tipo === "organizacion"){
+      window.location.href = "panel.html";
+    }else{
+      window.location.href = "app.html";
+    }
+
+  }catch(err){
+    console.error(err);
+    error.innerText = "Error del servidor";
+  }
+}
+
+// IR A REGISTRO
+function irRegistro(){
+  window.location.href = "registroapp.html";
+}
+
+// IR A RECUPERAR
+function irRecuperar(){
+  window.location.href = "recuperar.html";
+}
+
+</script>
+
+</body>
+</html>

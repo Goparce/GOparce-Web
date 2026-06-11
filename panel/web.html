@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>GO PARCE</title>
+
+<style>
+body{
+  margin:0;
+  font-family: Arial;
+}
+
+/* HERO */
+.hero{
+  background:black;
+  color:white;
+  padding:60px 20px;
+  text-align:center;
+}
+
+.hero h1{
+  font-size:40px;
+}
+
+.btn{
+  padding:12px 20px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  margin-top:20px;
+}
+
+.btn1{background:white;color:black;}
+.btn2{background:black;color:white;border:1px solid white;}
+
+/* SECCIONES */
+.section{
+  padding:50px 20px;
+  text-align:center;
+}
+
+.section h2{
+  margin-bottom:20px;
+}
+
+/* TARJETAS */
+.cards{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:20px;
+}
+
+.card{
+  width:250px;
+  padding:20px;
+  background:#f4f6f8;
+  border-radius:10px;
+}
+
+/* FOOTER */
+.footer{
+  background:black;
+  color:white;
+  text-align:center;
+  padding:20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- HERO -->
+
+<div class="hero">
+  <h1>GO PARCE</h1>
+  <p>Descubre y conecta con tu ciudad. Todo pasa cerca de ti.</p>
+
+<button class="btn btn1" onclick="irApp()">Entrar a la App</button> <br> <button class="btn btn2" onclick="irRegistro()">Registrarse</button>
+
+</div>
+
+<!-- QUE ES -->
+
+<div class="section">
+  <h2>¿Qué es GO PARCE?</h2>
+  <p>
+    GO PARCE es una plataforma que conecta a las personas con eventos,
+    actividades, servicios y experiencias en tiempo real según su ubicación.
+  </p>
+</div>
+
+<!-- COMO FUNCIONA -->
+
+<div class="section">
+  <h2>¿Cómo funciona?</h2>
+
+  <div class="cards">
+
+```
+<div class="card">
+  <h3>📍 Ubicación</h3>
+  <p>Encuentra eventos cerca de ti en tiempo real.</p>
+</div>
+
+<div class="card">
+  <h3>🎯 Personalizado</h3>
+  <p>Recibe eventos según tus intereses.</p>
+</div>
+
+<div class="card">
+  <h3>❤️ Interactúa</h3>
+  <p>Guarda eventos y crea tu historial.</p>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- BENEFICIOS -->
+
+<div class="section">
+  <h2>Beneficios</h2>
+
+  <div class="cards">
+
+```
+<div class="card">
+  <h3>🗺️ Descubre</h3>
+  <p>Nuevos lugares y experiencias.</p>
+</div>
+
+<div class="card">
+  <h3>🤝 Conecta</h3>
+  <p>Con tu comunidad.</p>
+</div>
+
+<div class="card">
+  <h3>🚀 Crece</h3>
+  <p>Apoya negocios locales.</p>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- QUIENES SOMOS -->
+
+<div class="section">
+  <h2>¿Quiénes somos?</h2>
+  <p>
+    Somos un equipo enfocado en conectar personas, negocios y comunidades
+    a través de la tecnología y la información en tiempo real.
+  </p>
+</div>
+
+<!-- FOOTER -->
+
+<div class="footer">
+  <p>GO PARCE © 2026</p>
+</div>
+
+<script>
+
+function irApp(){
+  window.location.href = "bienapp.html";
+}
+
+function irRegistro(){
+  window.location.href = "registroapp.html";
+}
+
+</script>
+
+</body>
+</html>

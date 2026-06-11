@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>GO PARCE - Mural</title>
+
+  <!-- MAPA -->
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 30%;
+      background: #f4f6f8;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .muro {
+      width: 70%;
+      background: #ffffff;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .muro-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    h2 { margin-top: 20px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      margin-bottom: 10px;
+    }
+
+    input, select {
+      padding: 6px;
+      width: 95%;
+    }
+
+    button {
+      margin: 5px 0;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .card {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      border-left: 5px solid #007bff;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 5px;
+      margin: 3px;
+      background: #ddd;
+      cursor: pointer;
+    }
+
+    .tag.selected {
+      background: #007bff;
+      color: white;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      width: 400px;
+      border-radius: 10px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #map {
+      height: 400px;
+      border-radius: 10px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+
+<div class="sidebar">
+
+  <h1>Mural</h1>
+
+<button onclick="volver()">← Volver</button>
+
+  <hr>
+
+  <h2>Configurar Muro</h2>
+
+  <div class="grid">
+    <label>Título:</label>
+    <input id="tituloMuro">
+  </div>
+
+  <div class="grid">
+    <label>Descripción:</label>
+    <input id="descripcionMuro">
+  </div>
+
+<button onclick="abrirMapa()">Seleccionar ubicación 📍</button>
+
+  <p id="coords"></p>
+
+<button onclick="guardarMuro()">Guardar Muro</button>
+
+  <hr>
+
+  <h2>Publicar</h2>
+
+<button onclick="abrirServicio()">+ Servicio / Actividad</button> <button onclick="abrirNoticia()">+ Noticia</button>
+
+</div>
+
+<!-- MURO -->
+
+<div class="muro">
+
+  <h2 id="verTituloMuro">Sin título</h2>
+  <p id="verDescripcionMuro"></p>
+
+  <hr>
+
+  <h3>Servicios / Actividades</h3>
+  <div id="listaServicios" class="muro-grid"></div>
+
+  <h3>Noticias</h3>
+  <div id="listaNoticias" class="muro-grid"></div>
+
+</div>
+
+<!-- MODAL SERVICIO -->
+
+<div class="modal" id="modalServicio">
+  <div class="modal-content">
+
+```
+<h3>Nuevo Servicio</h3>
+
+<div class="grid"><label>Título:</label><input id="sTitulo"></div>
+<div class="grid"><label>Descripción:</label><input id="sDesc"></div>
+
+<!-- COSTO -->
+<div class="grid">
+  <label>Tiene costo:</label>
+  <select id="sCosto" onchange="toggleCostoServicio()">
+    <option value="no">No</option>
+    <option value="si">Sí</option>
+  </select>
+</div>
+
+<div class="grid" id="campoValorServicio" style="display:none;">
+  <label>Valor:</label><input id="sValor">
+</div>
+
+<!-- DIAS -->
+<label>Días:</label>
+<div id="dias"></div>
+
+<!-- CATEGORIAS -->
+<label>Categorías:</label>
+<div id="categoriasServicio"></div>
+
+<!-- CUPOS -->
+<div class="grid">
+  <label>Cupos:</label>
+  <select id="sTipoCupo" onchange="toggleCupos()">
+    <option value="abierto">Abierto</option>
+    <option value="limitado">Limitado</option>
+  </select>
+</div>
+
+<div class="grid" id="campoCupos" style="display:none;">
+  <label>Cantidad:</label><input id="sCupos" maxlength="2">
+</div>
+
+<!-- LINK -->
+<div class="grid">
+  <label>Link:</label><input id="sLink">
+</div>
+
+<button onclick="guardarServicio()">Guardar</button>
+<button onclick="cerrarServicio()">Cancelar</button>
+```
+
+  </div>
+</div>
+
+<!-- MODAL NOTICIA -->
+
+<div class="modal" id="modalNoticia">
+  <div class="modal-content">
+
+```
+<h3>Nueva Noticia</h3>
+
+<div class="grid"><label>Título:</label><input id="nTitulo"></div>
+<div class="grid"><label>Descripción:</label><input id="nDesc"></div>
+
+<div class="grid">
+  <label>Tipo:</label>
+  <select id="nTipo">
+    <option>Cultural</option>
+    <option>Social</option>
+    <option>Educativa</option>
+    <option>Informativa</option>
+    <option>Convocatoria</option>
+    <option>Recreativa</option>
+  </select>
+</div>
+
+<div class="grid">
+  <label>Link:</label><input id="nLink">
+</div>
+
+<button onclick="guardarNoticia()">Guardar</button>
+<button onclick="cerrarNoticia()">Cancelar</button>
+```
+
+  </div>
+</div>
+
+<!-- MAPA -->
+
+<div id="modalMapa" class="modal">
+  <div class="modal-content" style="width:80%;">
+    <h3>Selecciona ubicación</h3>
+    <div id="map"></div>
+    <br>
+    <button onclick="confirmarUbicacion()">Confirmar</button>
+    <button onclick="cerrarMapa()">Cancelar</button>
+  </div>
+</div>
+
+<script>
+
+const API = "http://localhost:3000";
+const user = JSON.parse(localStorage.getItem("usuario"));
+if (!user) window.location.href = "index.html";
+
+function volver() {
+  window.location.href = "panel.html";
+}
+
+// ================= MAPA =================
+let map, marcador, lat = null, lng = null;
+
+function abrirMapa() {
+  modalMapa.style.display = "flex";
+
+  setTimeout(() => {
+    if (!map) {
+      map = L.map('map').setView([4.6097, -74.0817], 13);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+      map.on('click', function(e) {
+        lat = e.latlng.lat;
+        lng = e.latlng.lng;
+
+        if (marcador) map.removeLayer(marcador);
+        marcador = L.marker([lat, lng]).addTo(map);
+      });
+
+    } else {
+      map.invalidateSize();
+    }
+  }, 200);
+}
+
+function confirmarUbicacion() {
+  if (!lat || !lng) return alert("Selecciona un punto");
+
+  coords.innerText = `Ubicación ✔ (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+  cerrarMapa();
+}
+
+function cerrarMapa() {
+  modalMapa.style.display = "none";
+}
+
+// ================= MURO =================
+async function guardarMuro() {
+  await fetch(API + "/muro", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      titulo: tituloMuro.value,
+      descripcion: descripcionMuro.value,
+      lat,
+      lng,
+      usuario_id: user._id
+    })
+  });
+
+  cargarMuro();
+}
+
+async function cargarMuro() {
+  const res = await fetch(API + "/muro");
+  const data = await res.json();
+
+  const miMuro = data.find(m => m.usuario_id == user._id);
+
+  if (miMuro) {
+    verTituloMuro.innerText = miMuro.titulo;
+    verDescripcionMuro.innerText = miMuro.descripcion;
+    tituloMuro.value = miMuro.titulo;
+    descripcionMuro.value = miMuro.descripcion;
+  }
+}
+
+// ================= SERVICIOS =================
+async function guardarServicio() {
+
+  const codigo = "MS-" + Math.floor(Math.random()*9999);
+
+  await fetch(API + "/servicios", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      titulo: sTitulo.value,
+      descripcion: sDesc.value,
+      etiquetas: etiquetasServicio,
+      dias: diasSeleccionados,
+      costo: sCosto.value === "si" ? sValor.value : "gratis",
+      cupos: sTipoCupo.value === "limitado" ? sCupos.value : "abierto",
+      link: sLink.value,
+      fecha_publicacion: new Date(),
+      codigo,
+      usuario_id: user._id
+    })
+  });
+
+  cerrarServicio();
+  cargarServicios();
+}
+
+async function cargarServicios() {
+
+  const res = await fetch(API + "/servicios");
+  const data = await res.json();
+
+  listaServicios.innerHTML = "";
+
+  data
+    .filter(s => s.usuario_id == user._id)
+    .forEach(s => {
+
+      listaServicios.innerHTML += `
+        <div class="card">
+
+          <h3>${s.titulo}</h3>
+
+          <p><strong>Descripción:</strong> ${s.descripcion}</p>
+
+          <p><strong>Categorías:</strong> ${
+            s.etiquetas && s.etiquetas.length
+              ? s.etiquetas.join(", ")
+              : "No definidas"
+          }</p>
+
+          <p><strong>Días:</strong> ${
+            s.dias && s.dias.length
+              ? s.dias.join(", ")
+              : "No definidos"
+          }</p>
+
+          <p><strong>Costo:</strong> ${
+            s.costo === "gratis" ? "Gratuito" : "$" + s.costo
+          }</p>
+
+          <p><strong>Cupos:</strong> ${s.cupos}</p>
+
+          ${
+            s.link
+              ? `<p><a href="${s.link}" target="_blank">🔗 Ver más</a></p>`
+              : ""
+          }
+
+          <p><strong>Publicado:</strong> ${
+            new Date(s.fecha_publicacion).toLocaleDateString()
+          }</p>
+
+          <p>👥 Interesados: ${s.interesados || 0}</p>
+
+          <button onclick="impulsar('${s._id}')">Impulsar</button>
+
+        </div>
+      `;
+    });
+
+}
+
+// ================= NOTICIAS =================
+async function guardarNoticia() {
+
+  const codigo = "MN-" + Math.floor(Math.random()*9999);
+
+  await fetch(API + "/noticias", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      titulo: nTitulo.value,
+      descripcion: nDesc.value,
+      tipo: nTipo.value,
+      link: nLink.value,
+      fecha_publicacion: new Date(),
+      codigo,
+      usuario_id: user._id
+    })
+  });
+
+  cerrarNoticia();
+  cargarNoticias();
+}
+
+async function cargarNoticias() {
+
+  const res = await fetch(API + "/noticias");
+  const data = await res.json();
+
+  listaNoticias.innerHTML = "";
+
+  data
+    .filter(n => n.usuario_id == user._id)
+    .forEach(n => {
+
+      listaNoticias.innerHTML += `
+        <div class="card">
+
+          <h3>${n.titulo}</h3>
+
+          <p><strong>Descripción:</strong> ${n.descripcion}</p>
+
+          <p><strong>Tipo:</strong> ${n.tipo}</p>
+
+          ${
+            n.link
+              ? `<p><a href="${n.link}" target="_blank">🔗 Ver noticia</a></p>`
+              : ""
+          }
+
+          <p><strong>Publicado:</strong> ${
+            new Date(n.fecha_publicacion).toLocaleDateString()
+          }</p>
+
+          <p>👥 Interesados: ${n.interesados || 0}</p>
+
+          <button onclick="impulsar('${n._id}')">Impulsar</button>
+
+        </div>
+      `;
+    });
+
+}
+
+
+// ================= IMPULSAR =================
+async function impulsar(id) {
+  await fetch(API + "/impulsar/" + id, { method:"POST" });
+  alert("Impulsado 🚀");
+}
+
+// ================= MODALES =================
+function abrirServicio() { modalServicio.style.display = "flex"; }
+function cerrarServicio() { modalServicio.style.display = "none"; }
+
+function abrirNoticia() { modalNoticia.style.display = "flex"; }
+function cerrarNoticia() { modalNoticia.style.display = "none"; }
+
+// ================= EXTRA =================
+
+// DIAS
+const diasSemana = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+let diasSeleccionados = [];
+
+diasSemana.forEach(d => {
+  const el = document.createElement("span");
+  el.className = "tag";
+  el.innerText = d;
+
+  el.onclick = () => {
+    el.classList.toggle("selected");
+    diasSeleccionados.includes(d)
+      ? diasSeleccionados = diasSeleccionados.filter(x => x !== d)
+      : diasSeleccionados.push(d);
+  };
+
+  document.getElementById("dias").appendChild(el);
+});
+
+// COSTO
+function toggleCostoServicio() {
+  campoValorServicio.style.display =
+    sCosto.value === "si" ? "flex" : "none";
+}
+
+// CUPOS
+function toggleCupos() {
+  campoCupos.style.display =
+    sTipoCupo.value === "limitado" ? "flex" : "none";
+}
+
+// CATEGORIAS
+let etiquetasServicio = [];
+
+async function cargarCategoriasServicio() {
+
+  const contenedor = document.getElementById("categoriasServicio");
+  contenedor.innerHTML = "";
+
+  try {
+
+    const res = await fetch(API + "/categorias");
+
+    console.log("RESPUESTA API:", res);
+
+    if (!res.ok) {
+      throw new Error("Error en la API /categorias");
+    }
+
+    const data = await res.json();
+
+    console.log("CATEGORIAS RECIBIDAS:", data);
+
+    if (!data || data.length === 0) {
+      contenedor.innerHTML = "No hay categorías disponibles";
+      return;
+    }
+
+    data.forEach(cat => {
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+      card.innerHTML = `<strong>${cat.nombre}</strong>`;
+
+      const sub = document.createElement("div");
+      sub.style.display = "none";
+
+      // 🔥 CORRECCIÓN CLAVE (sin romper tu lógica)
+      const listaSub = cat.subcategorias || [];
+
+      listaSub.forEach(s => {
+
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.innerText = s;
+
+        tag.onclick = (e) => {
+          e.stopPropagation();
+
+          if (tag.classList.contains("selected")) {
+            tag.classList.remove("selected");
+            etiquetasServicio =
+              etiquetasServicio.filter(e => e !== s);
+          } else {
+
+            if (etiquetasServicio.length >= 5) {
+              alert("Máx 5");
+              return;
+            }
+
+            tag.classList.add("selected");
+            etiquetasServicio.push(s);
+          }
+        };
+
+        sub.appendChild(tag);
+      });
+
+      card.onclick = () => {
+        sub.style.display =
+          sub.style.display === "block" ? "none" : "block";
+      };
+
+      card.appendChild(sub);
+      contenedor.appendChild(card);
+
+    });
+
+  } catch (error) {
+
+    console.error("ERROR CATEGORIAS:", error);
+
+    contenedor.innerHTML = `
+      <p style="color:red;">
+        Error cargando categorías<br>
+        Revisa backend o Mongo
+      </p>
+    `;
+  }
+}
+
+// INIT
+cargarMuro();
+cargarServicios();
+cargarNoticias();
+cargarCategoriasServicio();
+
+</script>
+
+</body>
+</html>

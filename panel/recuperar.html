@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Recuperar contraseña</title>
+</head>
+<body>
+
+<h1>Recuperar contraseña</h1>
+
+<button onclick="volver()">← Volver</button>
+
+<hr>
+
+<p>Ingresa tu correo:</p>
+
+<input id="correo" placeholder="Correo"><br><br>
+
+<button onclick="recuperar()">Recuperar</button>
+
+<p id="mensaje"></p>
+
+<script>
+
+const API = "http://localhost:3000";
+
+function volver() {
+  window.location.href = "index.html";
+}
+
+async function recuperar() {
+
+  const correo = document.getElementById("correo").value;
+
+  const res = await fetch(API + "/recuperar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ correo })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    document.getElementById("mensaje").innerText = "Correo no encontrado";
+    return;
+  }
+
+  document.getElementById("mensaje").innerText =
+    "Tu contraseña es: " + data.password;
+}
+
+</script>
+
+</body>
+</html>
